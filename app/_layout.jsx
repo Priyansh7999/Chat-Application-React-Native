@@ -1,0 +1,45 @@
+import { Slot, Stack } from "expo-router";
+import { AuthContextProvider } from "../context/authContext";
+import { ActionSheetProvider } from "@expo/react-native-action-sheet";
+import { Image, StyleSheet, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
+
+export default function RootLayout() {
+  return (
+    <ActionSheetProvider>
+      <AuthContextProvider>
+        <View style={styles.container}>
+          <StatusBar backgroundColor='#1C1B33' style='light' />
+          <Image
+            source={require('../assets/images/Darkmode.jpg')}
+            style={styles.backgroundImage}
+            resizeMode="cover"
+          />
+          <Stack 
+            screenOptions={{ 
+              headerShown: false, 
+              presentation: 'modal',
+              contentStyle: { backgroundColor: 'transparent' }
+            }} 
+          />
+        </View>
+      </AuthContextProvider>
+    </ActionSheetProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    position: 'relative',
+  },
+  backgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+});
