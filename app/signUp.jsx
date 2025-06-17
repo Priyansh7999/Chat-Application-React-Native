@@ -1,34 +1,119 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { CustomKeyboardView } from '../components/CustomKeyboardView';
 import { useAuth } from '../context/authContext';
 
 export default function SignUpScreen() {
-  const usernameRef = useRef('');
-  const passwordRef = useRef('');
-  const emailRef = useRef('');
-  const phoneRef = useRef('');
+  // Use useState instead of useRef for form inputs
+  const [formData, setFormData] = useState({
+    username: '',
+    phone: '',
+    email: '',
+    password: ''
+  });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { register } = useAuth();
 
-  async function handleRegister() {
-    if(!emailRef.current || !passwordRef.current || !usernameRef.current || !phoneRef.current) {
-        Alert.alert('Sign Up', 'Please fill in all fields.');
-        return;
+  // Input validation functions
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone) => {
+    const phoneRegex = /^[+]?[\d\s\-\(\)]+$/;
+    return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
+  };
+
+  const validatePassword = (password) => {
+    return password.length >= 6;
+  };
+
+  const validateForm = () => {
+    const { username, phone, email, password } = formData;
+    
+    if (!username.trim()) {
+      return 'Username is required';
+    }
+    if (username.trim().length < 2) {
+      return 'Username must be at least 2 characters long';
+    }
+    if (!phone.trim()) {
+      return 'Phone number is required';
+    }
+    if (!validatePhone(phone)) {
+      return 'Please enter a valid phone number';
+    }
+    if (!email.trim()) {
+      return 'Email is required';
+    }
+    if (!validateEmail(email)) {
+      return 'Please enter a valid email address';
+    }
+    if (!password) {
+      return 'Password is required';
+    }
+    if (!validatePassword(password)) {
+      return 'Password must be at least 6 characters long';
     }
     
-  let response = await register(emailRef.current, passwordRef.current, usernameRef.current, phoneRef.current);
-    
-    if (response.success) {
-      router.replace('/signIn');
-    } else {
-      setError(response.message || 'Registration failed.');
-      Alert.alert('Sign Up Error', response.message || 'An error occurred during registration.');
-      console.error('Registration Error:', response.message);
+    return null;
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
+    }
+  };
+
+  async function handleRegister() {
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      Alert.alert('Validation Error', validationError);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const { username, phone, email, password } = formData;
+      const response = await register(email, password, username, phone);
+      
+      if (response.success) {
+        Alert.alert(
+          'Registration Successful', 
+          response.message,
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/signIn')
+            }
+          ]
+        );
+      } else {
+        setError(response.message || 'Registration failed.');
+        Alert.alert('Registration Error', response.message || 'An error occurred during registration.');
+      }
+    } catch (error) {
+      console.error('Registration Error:', error);
+      setError('An unexpected error occurred. Please try again.');
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -47,64 +132,100 @@ export default function SignUpScreen() {
           <Text style={styles.heading}>Sign up</Text>
 
           <View style={styles.formGroup}>
-            {/* Name Field */}
+            {/* Username Field */}
             <View style={styles.inputField}>
               <Ionicons name="person-outline" size={24} color="indigo" />
               <TextInput
-                onChangeText={value => (usernameRef.current = value)}
+                value={formData.username}
+                onChangeText={(value) => handleInputChange('username', value)}
                 style={styles.inputText}
                 placeholder="Username"
                 placeholderTextColor="gray"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
               />
             </View>
+
             {/* Phone Field */}
             <View style={styles.inputField}>
               <Ionicons name="call-outline" size={24} color="indigo" />
               <TextInput
-                onChangeText={value => (phoneRef.current = value)}
+                value={formData.phone}
+                onChangeText={(value) => handleInputChange('phone', value)}
                 style={styles.inputText}
                 placeholder="Phone Number"
                 placeholderTextColor="gray"
                 keyboardType="phone-pad"
+                editable={!loading}
               />
             </View>
+
             {/* Email Field */}
             <View style={styles.inputField}>
               <Ionicons name="mail-outline" size={24} color="indigo" />
               <TextInput
-                onChangeText={value => (emailRef.current = value)}
+                value={formData.email}
+                onChangeText={(value) => handleInputChange('email', value.toLowerCase().trim())}
                 style={styles.inputText}
                 placeholder="Email Address"
                 placeholderTextColor="gray"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
               />
             </View>
+
             {/* Password Field */}
             <View style={styles.inputField}>
               <Ionicons name="lock-closed-outline" size={24} color="indigo" />
               <TextInput
-                onChangeText={value => (passwordRef.current = value)}
+                value={formData.password}
+                onChangeText={(value) => handleInputChange('password', value)}
                 style={styles.inputText}
                 placeholder="Password"
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 placeholderTextColor="gray"
+                editable={!loading}
               />
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                  size={20} 
+                  color="gray" 
+                />
+              </TouchableOpacity>
             </View>
+
             {/* Error Message */}
             {error ? (
               <Text style={styles.errorText}>{error}</Text>
             ) : null}
           </View>
 
-          <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-            <Text style={styles.registerButtonText}>Register</Text>
+          <TouchableOpacity 
+            style={[styles.registerButton, loading && styles.disabledButton]} 
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.registerButtonText}>Register</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.signInRedirect}>
             <Text style={styles.infoText}>Already have an account?</Text>
-            <Pressable onPress={() => router.push('/signIn')}>
-              <Text style={styles.linkText}> Sign In</Text>
+            <Pressable 
+              onPress={() => router.push('/signIn')}
+              disabled={loading}
+            >
+              <Text style={[styles.linkText, loading && styles.disabledLink]}> Sign In</Text>
             </Pressable>
           </View>
         </View>
@@ -113,12 +234,11 @@ export default function SignUpScreen() {
   );
 }
 
-// ...styles remain unchanged...
 const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingTop: wp('25%'),
-    backgroundColor: 'transparent',
+    backgroundColor: '#1C1B33',
     gap: 12,
   },
   imageWrapper: {
@@ -151,6 +271,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'indigo',
+    position: 'relative',
   },
   inputText: {
     color: 'white',
@@ -158,12 +279,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'InriaSans-Regular',
   },
+  eyeIcon: {
+    padding: 5,
+  },
   errorText: {
-    color: 'red',
+    color: '#ff4757',
     textAlign: 'center',
     width: wp('90%'),
-    fontSize: wp('4%'),
+    fontSize: wp('3.5%'),
     alignSelf: 'center',
+    marginTop: 5,
+    fontFamily: 'InriaSans-Regular',
   },
   registerButton: {
     width: wp('85%'),
@@ -172,6 +298,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'indigo',
     borderRadius: 17,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: hp('6%'),
+  },
+  disabledButton: {
+    backgroundColor: '#666',
+    opacity: 0.7,
   },
   registerButtonText: {
     color: 'white',
@@ -188,7 +320,11 @@ const styles = StyleSheet.create({
     fontFamily: 'InriaSans-Bold',
   },
   linkText: {
-    color: 'red',
+    color: '#00DF82',
     fontWeight: 'bold',
+    fontFamily: 'InriaSans-Bold',
+  },
+  disabledLink: {
+    opacity: 0.5,
   },
 });

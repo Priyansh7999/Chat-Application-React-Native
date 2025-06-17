@@ -1,21 +1,97 @@
 import { router } from "expo-router";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { addDoc, collection, doc, getDoc, getDocs, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendEmailVerification } from "firebase/auth";
+import { addDoc, collection, doc, getDoc, getDocs, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch, deleteDoc } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "../firebaseConfig";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { storage } from "../firebaseConfig";
-
 export const AuthContext = createContext();
 export const AuthContextProvider = ({ children }) => {
 
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // REGISTER NEW USER
+    const login = async (email, password) => {
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const currentUser = userCredential.user;
+            if (!currentUser.emailVerified) {
+                await auth.signOut();
+                return {
+                    success: false,
+                    message: "Please verify your email first. Check your inbox for the verification link.",
+                    needsVerification: true
+                };
+            }
+            const userRef = doc(db, 'users', currentUser.uid);
+            await updateDoc(userRef, {
+                lastSeen: new Date().toISOString(),
+                emailVerified: true
+            });
+            setIsAuthenticated(true);
+            return { success: true, message: "Login successful" };
+        } catch (error) {
+            let message = error.message || "Login failed";
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    message = "User not found. Please check your email and password.";
+                    break;
+                case 'auth/invalid-email':
+                    message = "Invalid email format. Please enter a valid email.";
+                    break;
+                case 'auth/wrong-password':
+                    message = "Incorrect password. Please try again.";
+                    break;
+                case 'auth/user-disabled':
+                    message = "User account is disabled. Please contact support.";
+                    break;
+                case 'auth/too-many-requests':
+                    message = "Too many login attempts. Please try again later.";
+                    break;
+                case 'auth/network-request-failed':
+                    message = "Network error. Please check your internet connection.";
+                    break;
+                case 'auth/operation-not-allowed':
+                    message = "Email/password sign-in is not enabled. Please contact support.";
+                    break;
+                case 'auth/invalid-credential':
+                    message = "Invalid credentials. Please check your email and password.";
+                    break;
+                default:
+                    message = error.message || message;
+            }
+            return { success: false, message: message };
+        }
+    };
+
+    const resendVerificationEmail = async () => {
+        try {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                await sendEmailVerification(currentUser);
+                return {
+                    success: true,
+                    message: "Verification email sent! Please check your inbox."
+                };
+            } else {
+                return {
+                    success: false,
+                    message: "No user found. Please try logging in again."
+                };
+            }
+        } catch (error) {
+            console.error("Resend verification error:", error);
+            return {
+                success: false,
+                message: "Failed to send verification email. Please try again."
+            };
+        }
+    };
+
     const register = async (email, password, username, phone) => {
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const firebaseUser = userCredential.user;
+
+            await sendEmailVerification(firebaseUser);
+
             await setDoc(doc(db, 'users', firebaseUser.uid), {
                 uid: firebaseUser.uid,
                 email: email,
@@ -34,59 +110,46 @@ export const AuthContextProvider = ({ children }) => {
                 friends: [],
                 lastSeen: new Date().toISOString(),
                 profileImage: "https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvdjkzNy1hZXctMTExXzMuanBn.jpg",
+                emailVerified: false,
             });
-            return { success: true, message: "Registration successful", user: firebaseUser };
+
+            await auth.signOut();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return {
+                success: true,
+                message: "Registration successful! Please check your email for verification before signing in.",
+                user: firebaseUser
+            };
         } catch (error) {
-            console.error(error);
-            let message = error.message || "Registration failed";
-            if (error.code === 'auth/email-already-in-use') {
-                message = "Email already in use. Please use a different email.";
-            } else if (error.code === 'auth/invalid-email') {
-                message = "Invalid email format. Please enter a valid email.";
-            } else if (error.code === 'auth/weak-password') {
-                message = "Password is too weak. Please choose a stronger password.";
+            console.error("Registration error:", error);
+            try {
+                await auth.signOut();
+            } catch (signOutError) {
+                console.error("Error signing out after registration failure:", signOutError);
+            }
+            let message = "Registration failed. Please try again.";
+            switch (error.code) {
+                case 'auth/email-already-in-use':
+                    message = "This email is already registered. Please use a different email or try signing in.";
+                    break;
+                case 'auth/invalid-email':
+                    message = "Invalid email format. Please enter a valid email address.";
+                    break;
+                case 'auth/weak-password':
+                    message = "Password is too weak. Please use at least 6 characters with a mix of letters and numbers.";
+                    break;
+                case 'auth/operation-not-allowed':
+                    message = "Email/password accounts are not enabled. Please contact support.";
+                    break;
+                case 'auth/network-request-failed':
+                    message = "Network error. Please check your internet connection and try again.";
+                    break;
+                default:
+                    message = error.message || message;
             }
             return { success: false, message: message };
         }
     };
-
-    // Login existing user
-    const login = async (email, password) => {
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            const currentUser = auth.currentUser;
-            if (currentUser) {
-                const userRef = doc(db, 'users', currentUser.uid);
-                await updateDoc(userRef, {
-                    lastSeen: new Date().toISOString(),
-                });
-            }
-            setIsAuthenticated(true);
-            return { success: true, message: "Login successful" };
-        } catch (error) {
-            let message = error.message || "Login failed";
-            if (error.code === 'auth/user-not-found') {
-                message = "User not found. Please check your email and password.";
-            } else if (error.code === 'auth/invalid-email') {
-                message = "Invalid email format. Please enter a valid email.";
-            } else if (error.code === 'auth/wrong-password') {
-                message = "Incorrect password. Please try again.";
-            } else if (error.code === 'auth/user-disabled') {
-                message = "User account is disabled. Please contact support.";
-            } else if (error.code === 'auth/too-many-requests') {
-                message = "Too many login attempts. Please try again later.";
-            } else if (error.code === 'auth/network-request-failed') {
-                message = "Network error. Please check your internet connection.";
-            } else if (error.code === 'auth/operation-not-allowed') {
-                message = "Email/password sign-in is not enabled. Please contact support.";
-            } else if (error.code === 'auth/invalid-credential') {
-                message = "Invalid credentials. Please check your email and password.";
-            }
-            return { success: false, message: message };
-        };
-    };
-
-    // Logout user
     const logout = async () => {
         return signOut(auth).then(() => {
             setIsAuthenticated(false);
@@ -358,6 +421,7 @@ export const AuthContextProvider = ({ children }) => {
 
         return unsubscribe;
     };
+    // Real time updates
     const fetchUserProfile = async (userId = null) => {
         try {
             const currentUser = auth.currentUser;
@@ -422,34 +486,19 @@ export const AuthContextProvider = ({ children }) => {
     };
 
     // Update profile image
-    const updateProfileImage = async (imageUri) => {
+    const updateProfileImage = async (imageData, isURL = false) => {
         try {
             const currentUser = auth.currentUser;
             const uid = currentUser?.uid;
-            if (!uid) {
-                return { success: false, message: "No authenticated user found" };
-            }
-
-            // Convert image URI to blob
-            const response = await fetch(imageUri);
-            const blob = await response.blob();
-
-            // Create a reference to the user's profile image
-            const imageRef = ref(storage, `profileImages/${uid}/${Date.now()}.jpg`);
-
-            // Upload the image
-            await uploadBytes(imageRef, blob);
-
-            // Get the download URL
-            const downloadURL = await getDownloadURL(imageRef);
-
-            // Update user profile with new image URL
             const userRef = doc(db, 'users', uid);
+
+            const imageUri = isURL ? imageData : `data:image/jpeg;base64,${imageData}`;
+
             await updateDoc(userRef, {
-                profileImage: downloadURL
+                profileImage: imageUri
             });
 
-            return { success: true, message: "Profile image updated successfully", imageUrl: downloadURL };
+            return { success: true, message: "Profile image updated successfully", imageUrl: imageUri };
         } catch (error) {
             console.error("Error updating profile image:", error);
             return { success: false, message: error.message || "Failed to update profile image" };
@@ -460,6 +509,7 @@ export const AuthContextProvider = ({ children }) => {
         <AuthContext.Provider value={{
             register,
             login,
+            resendVerificationEmail,
             logout,
             isAuthenticated,
             setIsAuthenticated,

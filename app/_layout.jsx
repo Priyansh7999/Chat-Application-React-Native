@@ -10,16 +10,10 @@ export default function RootLayout() {
       <AuthContextProvider>
         <View style={styles.container}>
           <StatusBar backgroundColor='#1C1B33' style='light' />
-          <Image
-            source={require('../assets/images/Darkmode.jpg')}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-          />
           <Stack 
             screenOptions={{ 
-              headerShown: false, 
-              presentation: 'modal',
-              contentStyle: { backgroundColor: 'transparent' }
+              headerShown: false,
+              contentStyle: { backgroundColor: '#1C1B33' }
             }} 
           />
         </View>
@@ -32,6 +26,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
+    backgroundColor: '#1C1B33',
   },
   backgroundImage: {
     position: 'absolute',

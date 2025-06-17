@@ -3,10 +3,11 @@ import { useAuth } from '../context/authContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 
 export default function index() {
   const router = useRouter();
+  const segments = useSegments();
   const { isAuthenticated } = useAuth();
   const [fontsLoaded] = useFonts({
     'InriaSans-Regular': require('@/assets/fonts/InriaSans-Regular.ttf'),
@@ -16,21 +17,23 @@ export default function index() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      // If authenticated, immediately replace to main app and prevent back navigation
-      router.replace('/(tabs)/Chats');
-    }
-  }, [isAuthenticated]);
+    // Only handle navigation after fonts are loaded
+    if (!fontsLoaded) return;
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      const timer = setTimeout(() => setShowSplash(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated]);
+    const timer = setTimeout(() => {
+      if (isAuthenticated) {
+        // Navigate to tabs and ensure we're on the Chats tab
+        router.replace('/(tabs)/Chats');
+      } else {
+        setShowSplash(false);
+      }
+    }, 100); // Small delay to ensure state is settled
 
-  // If fonts are not loaded or splash is showing, show splash/loading
-  if (!fontsLoaded || showSplash) {
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, fontsLoaded]);
+
+  // Show loading while fonts are loading or during authentication check
+  if (!fontsLoaded || (isAuthenticated && showSplash)) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="indigo" />
@@ -38,7 +41,7 @@ export default function index() {
     );
   }
 
-  // If authenticated, render nothing (prevents going back to this screen)
+  // If user is authenticated, don't show this screen
   if (isAuthenticated) {
     return null;
   }
@@ -67,14 +70,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent', // This allows the background image to show through
+    backgroundColor: '#1C1B33',
     padding: 24,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: '#1C1B33',
   },
   greetingImage: {
     width: 220,

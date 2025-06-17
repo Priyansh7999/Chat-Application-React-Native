@@ -3,7 +3,6 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Image, SafeAreaView, StyleSheet, useColorScheme, View } from 'react-native';
 import { Header } from '../../components/Header';
-import { useTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 
 const Layout = () => {
@@ -19,7 +18,6 @@ const Layout = () => {
                 style={styles.backgroundImage}
                 resizeMode="cover"
             />
-            <Header />
             <Tabs
                 screenOptions={{
                     headerShown: false,

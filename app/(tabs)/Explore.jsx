@@ -4,6 +4,7 @@ import { getDocs } from 'firebase/firestore';
 import { db, auth } from '../../firebaseConfig';
 import { useRouter } from 'expo-router';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { Header } from '../../components/Header';
 
 const Explore = () => {
     const [search, setSearch] = useState('');
@@ -58,39 +59,43 @@ const Explore = () => {
     if (loading) return <ActivityIndicator style={{ flex: 1, marginTop: 40 }} />;
     const isDarkMode = false;
     return (
-        <View style={styles.container}>
-            {/* Background Image */}
-            <Image
-            source={require('../../assets/images/Lightmodechat.jpg')}
-            style={styles.backgroundImage}
-            />
-            
-            <View style={styles.Container}>
-                <TextInput
-                    style={styles.searchBar}
-                    placeholder="Search by username..."
-                    value={search}
-                    onChangeText={setSearch}
-                    placeholderTextColor="#aaa"
+        <>
+            <Header />
+            <View style={styles.container}>
+                <Image
+                    source={require('../../assets/images/Lightmodechat.jpg')}
+                    style={styles.backgroundImage}
                 />
-                <FlatList
-                    data={filteredUsers}
-                    keyExtractor={item => item.uid}
-                    renderItem={({ item }) => (
-                        <Pressable style={styles.userRow} onPress={() => handleUserPress(item)}>
-                            <Image source={{ uri: item.profileImage }} style={styles.avatar} />
-                            <Text style={styles.username}>{item.username}</Text>
-                        </Pressable>
-                    )}
-                    ListEmptyComponent={
-                        <Text style={{ textAlign: 'center', marginTop: 40, color: '#888' }}>
-                            No users found.
-                        </Text>
-                    }
-                />
-            </View>
 
-        </View>
+                <View style={styles.Container}>
+                    <Text style={styles.title}>Explore People </Text>
+                    <TextInput
+                        style={styles.searchBar}
+                        placeholder="Search by username..."
+                        value={search}
+                        onChangeText={setSearch}
+                        placeholderTextColor="#aaa"
+                    />
+                    <FlatList
+                        data={filteredUsers}
+                        keyExtractor={item => item.uid}
+                        renderItem={({ item }) => (
+                            <Pressable style={styles.userRow} onPress={() => handleUserPress(item)}>
+                                <Image source={{ uri: item.profileImage }} style={styles.avatar} />
+                                <Text style={styles.username}>{item.username}</Text>
+                            </Pressable>
+                        )}
+                        ListEmptyComponent={
+                            <Text style={{ textAlign: 'center', marginTop: 40, color: '#888' }}>
+                                No users found.
+                            </Text>
+                        }
+                    />
+                </View>
+
+            </View>
+        </>
+
     );
 };
 
@@ -112,6 +117,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 16,
     },
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 16,
+        color: 'indigo',
+        fontFamily: 'InriaSans-Bold',
+        textAlign: 'center',
+    },
     searchBar: {
         borderRadius: 12,
         padding: 12,
@@ -127,7 +140,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 10,
         paddingTop: 20,
-        paddingBottom: 40,
     },
     avatar: {
         width: 48,

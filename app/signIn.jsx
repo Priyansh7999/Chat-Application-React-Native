@@ -10,27 +10,59 @@ export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, resendVerificationEmail } = useAuth(); 
   async function handleLogin() {
     if (!email || !password) {
       setError('Please fill in all fields.');
       return;
     }
+    setIsLoading(true);
+    setError('');
     try {
       const response = await login(email, password);
       if (response.success) {
         router.replace('/Chats');
       } else {
-        Alert.alert('Login Error', response.message || 'An error occurred during login.');
-        console.error('Login Error:', response.message);
+        if (response.needsVerification) {
+          Alert.alert(
+            'Email Verification Required',
+            response.message,
+            [
+              { text: 'OK', style: 'cancel', onPress: () => {router.replace('/signIn')} },
+              {
+                text: 'Resend Email',
+                onPress: ()=>{handleResendVerification(); router.replace('/signIn')}
+              }
+            ]
+          );
+        } else {
+          setError(response.message || 'An error occurred during login.');
+        }
       }
     } catch (err) {
-      setIsLoading(false);
       setError(err.message || 'An unexpected error occurred.');
       console.error('Login Error:', err);
+    } finally {
+      setIsLoading(false);
     }
   }
+  const handleResendVerification = async () => {
+    if (resendVerificationEmail) {
+      try {
+        const result = await resendVerificationEmail();
+        Alert.alert(
+          result.success ? 'Success' : 'Error',
+          result.message
+        );
+      } catch (error) {
+        Alert.alert('Error', 'Failed to resend verification email.');
+      }
+    } else {
+      Alert.alert('Info', 'Please check your email for the verification link.');
+    }
+  };
   return (
     <CustomKeyboardView>
       <View style={styles.container}>
@@ -46,35 +78,55 @@ export default function SignIn() {
                 <Ionicons name="mail-outline" size={24} color="indigo" />
                 <TextInput
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text.toLowerCase().trim()); 
+                    setError('');
+                  }}
                   style={styles.formInput}
                   placeholder='Email Address'
-                  placeholderTextColor='gray' />
+                  placeholderTextColor='gray'
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
               </View>
               <View style={{ gap: 5 }}>
                 <View style={styles.form}>
                   <Ionicons name="lock-closed-outline" size={24} color="indigo" />
                   <TextInput
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      setError(''); 
+                    }}
                     style={styles.formInput}
                     placeholder='Password'
                     secureTextEntry
-                    placeholderTextColor='gray' />
+                    placeholderTextColor='gray'
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
                 </View>
-                <Text style={{ width: wp('90%'), fontSize: wp('4%'), textAlign: 'center', color: 'red' }}>{error}</Text>
+                {error ? (
+                  <Text style={styles.errorText}>{error}</Text>
+                ) : null}
               </View>
             </View>
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.loginButtonText}>Login</Text>
+            <TouchableOpacity 
+              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} 
+              onPress={handleLogin}
+              disabled={isLoading}
+            >
+              <Text style={styles.loginButtonText}>
+                {isLoading ? 'Signing In...' : 'Login'}
+              </Text>
             </TouchableOpacity>
-           
 
-            <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-              <Text style={{ color: 'white', fontWeight: '200', fontFamily: 'InriaSans-Bold' }}>Don't have an account?</Text>
+            <View style={styles.signUpContainer}>
+              <Text style={styles.signUpText}>Don't have an account?</Text>
               <Pressable onPress={() => router.push('/signUp')}>
-                <Text style={{ color: 'red', fontWeight: 'bold' }}> Sign Up</Text>
+                <Text style={styles.signUpLink}> Sign Up</Text>
               </Pressable>
             </View>
           </View>
@@ -83,6 +135,7 @@ export default function SignIn() {
     </CustomKeyboardView>
   )
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -129,20 +182,41 @@ const styles = StyleSheet.create({
     color: 'white',
     fontFamily: 'InriaSans-Regular'
   },
+  errorText: {
+    width: wp('90%'),
+    fontSize: wp('4%'),
+    textAlign: 'center',
+    color: 'red',
+    fontFamily: 'InriaSans-Regular'
+  },
   loginButton: {
     width: wp('85%'),
     gap: 4,
     paddingVertical: hp('2%'),
     marginHorizontal: wp('7%'),
-    backgroundColor: 'white',
-    borderRadius: 12,
-    alignItems: 'center',
-    borderRadius: 17,
     backgroundColor: 'indigo',
+    borderRadius: 17,
+    alignItems: 'center',
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
   },
   loginButtonText: {
     color: 'white',
     fontSize: wp('5%'),
     fontFamily: 'InriaSans-Bold'
+  },
+  signUpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center'
+  },
+  signUpText: {
+    color: 'white',
+    fontWeight: '200',
+    fontFamily: 'InriaSans-Bold'
+  },
+  signUpLink: {
+    color: 'red',
+    fontWeight: 'bold'
   }
-})
+});

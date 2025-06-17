@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Image, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { Entypo } from '@expo/vector-icons';
+import { Entypo, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useAuth } from '../../context/authContext';
 import { auth } from '../../firebaseConfig';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { useActionSheet } from '@expo/react-native-action-sheet';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
+
 const Profile = () => {
     const { logout, fetchUserProfile, updateUserProfile, deleteUserProfile, updateProfileImage } = useAuth();
     const [isModalVisible, setModalVisible] = useState(false);
@@ -24,43 +25,6 @@ const Profile = () => {
         state: ''
     });
     const { showActionSheetWithOptions } = useActionSheet();
-
-
-
-
-
-    const [base64String, setbase64String] = useState(null);
-
-
-
-
-    const convertImageToBase64 = async (fileUri) => {
-        try {
-            const base64Data = await FileSystem.readAsStringAsync(fileUri, {
-                encoding: FileSystem.EncodingType.Base64,
-
-            });
-            return base64Data;
-        } catch (error) {
-            console.error('Error converting image to base64:', error);
-            return null;
-        }
-    };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     const fetchUser = async () => {
         const currentUser = auth.currentUser;
@@ -79,6 +43,7 @@ const Profile = () => {
         }
         setLoading(false);
     };
+
 
     useEffect(() => {
         fetchUser();
@@ -110,69 +75,91 @@ const Profile = () => {
 
         if (result.success) {
             setModalVisible(false);
-            fetchUser(); // Refresh profile data
+            fetchUser();
             Alert.alert('Success', result.message);
         } else {
             Alert.alert('Error', result.message);
         }
     };
 
+
+
+    const [base64Image, setBase64Image] = useState(null);
+    const DEFAULT_IMAGE_URL = 'https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvdjkzNy1hZXctMTExXzMuanBn.jpg';
     const openGallery = async () => {
         try {
-            let result = await ImagePicker.launchImageLibraryAsync({
+            const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ['images'],
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.8,
+                base64: true,
             });
-
-            if (result.canceled) {
-                return;
-            }
-            setLoading(true);
-            console.log(result.assets[0].uri);
-
-            const uploadResult = await updateProfileImage(result.assets[0].uri);
-
-            if (uploadResult.success) {
-                await fetchUser();
-                Alert.alert('Success', 'Profile image updated successfully!');
-            } else {
-                Alert.alert('Error', uploadResult.message);
-            }
+            if (result.canceled) return;
+            const base64 = result.assets[0].base64;
+            const base64Uri = `data:image/jpeg;base64,${base64}`;
+            Alert.alert(
+                "Update Profile",
+                "Are you sure you want to update your profile image?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Yes",
+                        onPress: async () => {
+                            setLoading(true);
+                            setBase64Image(base64Uri);
+                            const uploadResult = await updateProfileImage(base64);
+                            if (uploadResult.success) {
+                                const userResult = await fetchUserProfile();
+                                if (userResult.success) {
+                                    setUser(userResult.data);
+                                }
+                                Alert.alert("Success", uploadResult.message);
+                            } else {
+                                setBase64Image(null);
+                                Alert.alert("Error", uploadResult.message);
+                            }
+                            setLoading(false);
+                        }
+                    }
+                ]
+            );
         } catch (error) {
             Alert.alert('Error', 'Failed to update profile image');
             console.error('Gallery error:', error);
-        } finally {
             setLoading(false);
         }
     };
+
+
     const openCamera = async () => {
         try {
-            let result = await ImagePicker.launchCameraAsync({
+            const result = await ImagePicker.launchCameraAsync({
                 mediaTypes: ['images'],
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.8,
+                base64: true,
             });
 
-            if (result.canceled) {
-                return;
-            }
-
+            if (result.canceled) return;
+            const base64 = result.assets[0].base64;
+            const base64Uri = `data:image/jpeg;base64,${base64}`;
             setLoading(true);
-
-            // const uploadResult = await updateProfileImage(result.assets[0].uri);
-            setbase64String(convertImageToBase64(result.assets[0].uri));
-            console.log(base64String);
-
+            setBase64Image(base64Uri);
+            const uploadResult = await updateProfileImage(base64);
             if (uploadResult.success) {
-                await fetchUser();
+                const userResult = await fetchUserProfile();
+                if (userResult.success) {
+                    setUser(userResult.data);
+                }
                 Alert.alert('Success', 'Profile image updated successfully!');
             } else {
+                setBase64Image(null);
                 Alert.alert('Error', uploadResult.message);
             }
         } catch (error) {
+            setBase64Image(null);
             Alert.alert('Error', 'Failed to update profile image');
             console.error('Camera error:', error);
         } finally {
@@ -180,13 +167,48 @@ const Profile = () => {
         }
     };
 
+
+    const removeProfileImage = async () => {
+        Alert.alert(
+            "Remove Profile",
+            "Are you sure you want to remove your profile image?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Yes",
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const result = await updateProfileImage(DEFAULT_IMAGE_URL, true);
+                            if (result.success) {
+                                setBase64Image(null);
+                                const userResult = await fetchUserProfile();
+                                if (userResult.success) {
+                                    setUser(userResult.data);
+                                }
+                                Alert.alert("Success", result.message);
+                            } else {
+                                Alert.alert("Error", result.message);
+                            }
+                        } catch (err) {
+                            Alert.alert('Error', 'Failed to remove profile image.');
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+
     const handleProfileImage = () => {
         showActionSheetWithOptions(
             {
-                options: ['Take Photo', 'Upload from Gallery', 'Cancel',],
-                cancelButtonIndex: 2,
-                destructiveButtonIndex: 2,
-                title: 'Select Attachment',
+                options: ['Take Photo', 'Upload from Gallery', 'Remove Image', 'Cancel'],
+                cancelButtonIndex: 3,
+                destructiveButtonIndex: 3,
+                title: 'Update Profile Picture',
             },
             async (buttonIndex) => {
                 if (buttonIndex === 0) {
@@ -194,6 +216,7 @@ const Profile = () => {
                 } else if (buttonIndex === 1) {
                     openGallery();
                 } else if (buttonIndex === 2) {
+                    removeProfileImage();
                 }
             }
         )
@@ -221,19 +244,19 @@ const Profile = () => {
 
     const handleDelete = () => {
         Alert.alert(
-            "Delete Profile",
-            "Are you sure you want to delete your profile? This action cannot be undone.",
+            "Delete Account",
+            "Are you sure you want to delete your account? This action cannot be undone.",
             [
                 { text: "Cancel", style: "cancel" },
                 {
-                    text: "Yes",
+                    text: "Delete",
                     style: "destructive",
                     onPress: async () => {
                         const result = await deleteUserProfile();
 
                         if (result.success) {
-                            Alert.alert('Profile Deleted', result.message);
-                            router.replace('/'); // Navigate to home or login screen
+                            Alert.alert('Account Deleted', result.message);
+                            router.replace('/');
                         } else {
                             Alert.alert('Error', result.message);
                         }
@@ -243,15 +266,22 @@ const Profile = () => {
         );
     };
 
-    if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
+    if (loading) return (
+        <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00DF82" />
+        </View>
+    );
 
-    if (!user) return <Text style={{ textAlign: 'center', marginTop: 40 }}>No user data found.</Text>;
+    if (!user) return (
+        <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>No user data found.</Text>
+        </View>
+    );
 
     const isDarkMode = false;
 
     return (
-        <ScrollView style={{ flex: 1, height: '100%' }}>
-            {/* <Image source={{uri : }} style={styles.backgroundImage} resizeMode="cover" /> */}
+        <View style={styles.container}>
             <Image
                 source={isDarkMode
                     ? require('../../assets/images/Darkmode1.jpg')
@@ -260,61 +290,112 @@ const Profile = () => {
                 style={styles.backgroundImage}
                 resizeMode="cover"
             />
-            <View style={styles.container}>
-                <View style={styles.imageContainer}>
-                    <Image source={{ uri: user.profileImage }} style={styles.image} />
-                    <Pressable onPress={handleProfileImage} style={styles.cameraIcon}>
-                        <Entypo name="camera" size={24} color="indigo" style={styles.cameraIcon} />
-                    </Pressable>
-                </View>
-                <Text style={styles.username}>{user.username || 'Edit your profile'}</Text>
-                <Text style={styles.bio}>{user.bio || 'Edit your profile'}</Text>
-                <View style={styles.infoSectionWrapper}>
-                    <Image
-                        source={require('../../assets/images/Weekly.png')}
-                        style={styles.infoBackgroundImage}
-                    />
-                    <View style={styles.infoSection}>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>Name:</Text>
-                            <Text style={styles.value}>{user.name || 'Edit your profile'}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>Email:</Text>
-                            <Text style={styles.value}>{user.email || 'Edit your profile'}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>Phone:</Text>
-                            <Text style={styles.value}>{user.phone || 'Edit your profile'}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>City:</Text>
-                            <Text style={styles.value}>{user.location?.city || 'Edit your profile'}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>State:</Text>
-                            <Text style={styles.value}>{user.location?.state || 'Edit your profile'}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>Joined:</Text>
-                            <Text style={styles.value}>{user.createdAt?.split('T')[0] || 'Edit your profile'}</Text>
-                        </View>
+
+
+            <ScrollView
+                style={styles.scrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+            >
+                <View style={styles.headerSection}>
+                    <View style={styles.profileImageContainer}>
+                        <Image
+                            source={{
+                                uri: base64Image || user.profileImage || DEFAULT_IMAGE_URL
+                            }}
+                            style={styles.profileImage}
+                        />
+                        <Pressable onPress={handleProfileImage} style={styles.editImageButton}>
+                            <Entypo name="camera" size={16} color="#fff" />
+                        </Pressable>
+                    </View>
+
+                    <View style={styles.userInfo}>
+                        <Text style={styles.userName}>
+                            {user.username || 'Set Username'}
+                        </Text>
+                        <Text style={styles.userEmail}>
+                            {user.email}
+                        </Text>
+                        {user.bio && (
+                            <Text style={styles.userBio}>
+                                {user.bio}
+                            </Text>
+                        )}
                     </View>
                 </View>
 
-                <View style={styles.ButtonContainer}>
-                    <Pressable style={styles.editButton} onPress={handleModal}>
-                        <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center', fontFamily: 'InriaSans-Bold', }}>Edit Profile</Text>
-                    </Pressable>
-                    <Pressable style={styles.logoutButton} onPress={handleLogout}>
-                        <Text style={{ color: 'black', fontSize: 16, textAlign: 'center', fontFamily: 'InriaSans-Bold', }}>Logout</Text>
-                    </Pressable>
-                    <Pressable style={styles.DeleteProfileButton} onPress={handleDelete}>
-                        <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center', fontFamily: 'InriaSans-Bold', }}>Delete Profile</Text>
-                    </Pressable>
+                <View style={styles.infoContainer}>
+                    <View style={styles.infoCard}>
+                        <View style={styles.cardHeader}>
+                            <MaterialIcons name="person" size={20} color="#00DF82" />
+                            <Text style={styles.cardTitle}>Personal Information</Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Full Name</Text>
+                            <Text style={styles.infoValue}>
+                                {user.name || 'Not provided'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Phone</Text>
+                            <Text style={styles.infoValue}>
+                                {user.phone || 'Not provided'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Location</Text>
+                            <Text style={styles.infoValue}>
+                                {user.location?.city && user.location?.state
+                                    ? `${user.location.city}, ${user.location.state}`
+                                    : 'Not provided'
+                                }
+                            </Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Member Since</Text>
+                            <Text style={styles.infoValue}>
+                                {user.createdAt ?
+                                    new Date(user.createdAt).toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    })
+                                    : 'Unknown'
+                                }
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={styles.actionContainer}>
+                        <Pressable style={styles.primaryButton} onPress={handleModal}>
+                            <Feather name="edit" size={18} color="#fff" />
+                            <Text style={styles.primaryButtonText}>Edit Profile</Text>
+                        </Pressable>
+
+                        <View style={styles.secondaryButtonsRow}>
+                            <Pressable style={styles.secondaryButton} onPress={handleLogout}>
+                                <MaterialIcons name="logout" size={18} color="#666" />
+                                <Text style={styles.secondaryButtonText}>Logout</Text>
+                            </Pressable>
+
+                            <Pressable style={styles.dangerButton} onPress={handleDelete}>
+                                <MaterialIcons name="delete" size={18} color="#fff" />
+                                <Text style={styles.dangerButtonText}>Delete Account</Text>
+                            </Pressable>
+                        </View>
+                    </View>
                 </View>
-            </View>
-            <Modal isVisible={isModalVisible} onBackdropPress={handleModal}>
+            </ScrollView>
+
+            <Modal
+                isVisible={isModalVisible}
+                onBackdropPress={handleModal}
+                style={styles.modal}
+            >
                 <EditDataModal
                     editDetails={editDetails}
                     setEditDetails={setEditDetails}
@@ -322,7 +403,7 @@ const Profile = () => {
                     onSave={handleSave}
                 />
             </Modal>
-        </ScrollView>
+        </View>
     );
 };
 
@@ -331,10 +412,6 @@ export default Profile;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        height: '100%',
     },
     backgroundImage: {
         position: 'absolute',
@@ -344,114 +421,209 @@ const styles = StyleSheet.create({
         bottom: 0,
         width: '100%',
         height: '100%',
+        opacity: 1,
     },
-    imageContainer: {
-        marginBottom: 16,
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 20,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 100,
-        padding: 16,
+        backgroundColor: '#f5f5f5',
     },
-    image: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
     },
-    cameraIcon: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 2,
-        elevation: 2,
-    },
-    username: {
-        fontSize: 26,
-        color: '#232526',
-        marginTop: 8,
-        marginBottom: 4,
-        letterSpacing: 1,
-        fontFamily: 'InriaSans-Bold',
-    },
-    bio: {
-        fontSize: 15,
-        color: '#607d8b',
-        marginBottom: 18,
-        textAlign: 'center',
-        paddingHorizontal: 24,
-        fontFamily: 'InriaSans-Bold',
-    },
-    infoSectionWrapper: {
-        width: '90%',
-        borderRadius: 16,
-        overflow: 'hidden',
-        marginTop: 8,
-        position: 'relative',
-    },
-
-    infoBackgroundImage: {
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-
-    infoSection: {
-        padding: 18,
-    },
-
-    infoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
-    label: {
-        fontWeight: '600',
-        color: 'indigo',
+    errorText: {
         fontSize: 16,
-        fontFamily: 'InriaSans-Bold',
-    },
-    value: {
-        color: 'white',
-        fontSize: 16,
+        color: '#666',
         fontFamily: 'InriaSans-Regular',
     },
-    ButtonContainer: {
-        width: '100%',
-        display: 'flex',
-        padding: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        flexWrap: 'wrap',
-    },
-    editButton: {
-        backgroundColor: '#263238',
-        padding: 12,
-        borderRadius: 8,
-        marginTop: 16,
+
+    headerSection: {
+        backgroundColor: '#1C1B33',
+        paddingTop: 60,
+        paddingBottom: 30,
+        paddingHorizontal: 20,
         alignItems: 'center',
-        elevation: 1,
-        width: '45%',
-        fontFamily: 'InriaSans-Bold',
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        marginBottom: 20,
     },
-    logoutButton: {
+    profileImageContainer: {
+        position: 'relative',
+        marginBottom: 16,
+    },
+    profileImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 3,
+        borderColor: '#00DF82',
+    },
+    editImageButton: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
         backgroundColor: '#00DF82',
-        color: '#fff',
-        padding: 12,
-        width: '45%',
-        borderRadius: 8,
-        marginTop: 16,
+        borderRadius: 15,
+        width: 30,
+        height: 30,
+        justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#1C1B33',
+    },
+    userInfo: {
+        alignItems: 'center',
+    },
+    userName: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#fff',
+        marginBottom: 4,
         fontFamily: 'InriaSans-Bold',
     },
-    DeleteProfileButton: {
-        backgroundColor: '#FF6347',
-        color: '#fff',
-        padding: 12,
-        width: '45%',
-        borderRadius: 8,
-        marginTop: 16,
+    userEmail: {
+        fontSize: 16,
+        color: '#00DF82',
+        marginBottom: 8,
+        fontFamily: 'InriaSans-Regular',
+    },
+    userBio: {
+        fontSize: 14,
+        color: '#ccc',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+        fontFamily: 'InriaSans-Regular',
+        lineHeight: 20,
+    },
+
+    infoContainer: {
+        paddingHorizontal: 20,
+    },
+    infoCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 20,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    cardHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
+        marginBottom: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    cardTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333',
+        marginLeft: 8,
         fontFamily: 'InriaSans-Bold',
+    },
+    infoItem: {
+        marginBottom: 16,
+    },
+    infoLabel: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 4,
+        fontFamily: 'InriaSans-Regular',
+    },
+    infoValue: {
+        fontSize: 16,
+        color: '#333',
+        fontFamily: 'InriaSans-Regular',
+        fontWeight: '500',
+    },
+
+    actionContainer: {
+        marginTop: 10,
+    },
+    primaryButton: {
+        backgroundColor: '#00DF82',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        shadowColor: '#00DF82',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    primaryButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+        marginLeft: 8,
+        fontFamily: 'InriaSans-Bold',
+    },
+    secondaryButtonsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    secondaryButton: {
+        backgroundColor: '#fff',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+    },
+    secondaryButtonText: {
+        color: '#666',
+        fontSize: 14,
+        fontWeight: '500',
+        marginLeft: 6,
+        fontFamily: 'InriaSans-Bold',
+    },
+    dangerButton: {
+        backgroundColor: '#ff4757',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        flex: 1,
+    },
+    dangerButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '500',
+        marginLeft: 6,
+        fontFamily: 'InriaSans-Bold',
+    },
+    modal: {
+        margin: 0,
+        justifyContent: 'flex-end',
     },
 });
