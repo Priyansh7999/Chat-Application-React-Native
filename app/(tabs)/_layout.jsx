@@ -9,7 +9,6 @@ const Layout = () => {
     const isDarkMode = false;
     return (
         <View style={{ flex: 1, position: 'relative' }}>
-            <StatusBar backgroundColor='#1C1B33' style='light' />
             <Image
                 source={isDarkMode
                     ? require('../../assets/images/TabBar.png')

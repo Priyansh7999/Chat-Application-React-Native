@@ -13,7 +13,7 @@ const ChatHeader = ({ friend }) => {
             <Pressable style={styles.button} onPress={() => router.push({ pathname: '/FriendProfile', params: { uid: friend.uid } })}>
                 <Image source={{ uri: friend.profileImage }} style={styles.avatar} />
                 <View style={{ marginLeft: 12 }}>
-                    <Text style={styles.name}>{friend.name || friend.username}</Text>
+                    <Text style={styles.name}>{friend.username}</Text>
                     <Text style={styles.lastSeen}>
                        { `Last seen: ${new Date(friend.lastSeen).toLocaleString('en-IN', {
                                     timeZone: 'Asia/Kolkata',
@@ -24,19 +24,6 @@ const ChatHeader = ({ friend }) => {
                                     minute: '2-digit',
                                     hour12: true,
                                 })}`}
-                        {/* {friend.isOnline
-                            ? "Online"
-                            : friend.lastSeen
-                                ? `Last seen: ${new Date(friend.lastSeen).toLocaleString('en-IN', {
-                                    timeZone: 'Asia/Kolkata',
-                                    day: 'numeric',
-                                    month: 'long',
-                                    year: 'numeric',
-                                    hour: 'numeric',
-                                    minute: '2-digit',
-                                    hour12: true,
-                                })}`
-                                : ""} */}
                     </Text>
                 </View>
             </Pressable>

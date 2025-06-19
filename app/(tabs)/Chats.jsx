@@ -47,17 +47,13 @@ const Chats = () => {
   const filteredChats = chatPreviews.filter(chat =>
     chat.name?.toLowerCase().includes(search.trim().toLowerCase())
   );
-
   const handleChatPress = async (chat) => {
-    // Mark messages as read when opening the chat
     if (chat.chatId && chat.isUnread) {
       const currentUid = auth.currentUser?.uid;
       if (currentUid) {
         await markMessagesAsRead(chat.chatId, currentUid);
       }
     }
-
-    // Navigate to chat screen
     router.push({
       pathname: '/(others)/chatScreen',
       params: {
@@ -66,6 +62,7 @@ const Chats = () => {
       }
     });
   };
+
 
   return (
     <>
@@ -114,7 +111,7 @@ const Chats = () => {
                     styles.name,
                     chat.isUnread && styles.unreadName
                   ]}>
-                    {chat.name}
+                    {chat.username}
                   </Text>
                   <Text
                     style={[

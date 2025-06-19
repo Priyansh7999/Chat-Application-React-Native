@@ -9,7 +9,7 @@ export default function RootLayout() {
     <ActionSheetProvider>
       <AuthContextProvider>
         <View style={styles.container}>
-          <StatusBar backgroundColor='#1C1B33' style='light' />
+          {/* <StatusBar backgroundColor='#1C1B33' style='light' /> */}
           <Stack 
             screenOptions={{ 
               headerShown: false,

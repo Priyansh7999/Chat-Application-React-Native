@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { heightPercentageToDP as hp, widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { CustomKeyboardView } from '../components/CustomKeyboardView';
 import { useAuth } from '../context/authContext';
@@ -12,7 +12,7 @@ export default function SignIn() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login, resendVerificationEmail } = useAuth(); 
+  const { login, resendVerificationEmail, hasUsername } = useAuth();
   async function handleLogin() {
     if (!email || !password) {
       setError('Please fill in all fields.');
@@ -22,18 +22,24 @@ export default function SignIn() {
     setError('');
     try {
       const response = await login(email, password);
+      setIsLoading(false);
       if (response.success) {
-        router.replace('/Chats');
+        const usernameExists = await hasUsername();
+        if (usernameExists) {
+          router.replace('/Chats');
+        } else {
+          router.replace('/UniqueUsername');
+        }
       } else {
         if (response.needsVerification) {
           Alert.alert(
             'Email Verification Required',
             response.message,
             [
-              { text: 'OK', style: 'cancel', onPress: () => {router.replace('/signIn')} },
+              { text: 'OK', style: 'cancel', onPress: () => { router.replace('/signIn') } },
               {
                 text: 'Resend Email',
-                onPress: ()=>{handleResendVerification(); router.replace('/signIn')}
+                onPress: () => { handleResendVerification(); router.replace('/signIn') }
               }
             ]
           );
@@ -63,6 +69,15 @@ export default function SignIn() {
       Alert.alert('Info', 'Please check your email for the verification link.');
     }
   };
+if (isLoading) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" color="#0000ff" />
+      <Text>Loading...</Text>
+    </View>
+  );
+}
+
   return (
     <CustomKeyboardView>
       <View style={styles.container}>
@@ -79,7 +94,7 @@ export default function SignIn() {
                 <TextInput
                   value={email}
                   onChangeText={(text) => {
-                    setEmail(text.toLowerCase().trim()); 
+                    setEmail(text.toLowerCase().trim());
                     setError('');
                   }}
                   style={styles.formInput}
@@ -97,7 +112,7 @@ export default function SignIn() {
                     value={password}
                     onChangeText={(text) => {
                       setPassword(text);
-                      setError(''); 
+                      setError('');
                     }}
                     style={styles.formInput}
                     placeholder='Password'
@@ -113,8 +128,8 @@ export default function SignIn() {
               </View>
             </View>
 
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} 
+            <TouchableOpacity
+              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
             >

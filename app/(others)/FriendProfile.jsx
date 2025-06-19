@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Image, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { Entypo, Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { doc, onSnapshot, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
 import { db, auth } from '../../firebaseConfig';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -50,7 +50,7 @@ const FriendProfile = () => {
                                 friends: arrayRemove(currentUid)
                             });
                             Alert.alert('Removed', 'Friend removed successfully.');
-                            router.back();
+                            router.replace('/');
                         } catch (err) {
                             Alert.alert('Error', 'Failed to remove friend.');
                         }
@@ -89,13 +89,24 @@ const FriendProfile = () => {
             ]
         );
     };
-    
-    if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
 
-    if (!user) return <Text style={{ textAlign: 'center', marginTop: 40 }}>User not found.</Text>;
+    if (loading) return (
+        <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00DF82" />
+        </View>
+    );
+
+    if (!user) return (
+        <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>User not found.</Text>
+        </View>
+    );
+
     const isDarkMode = false;
+    const DEFAULT_IMAGE_URL = 'https://images.rawpixel.com/image_800/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvdjkzNy1hZXctMTExXzMuanBn.jpg';
+
     return (
-        <ScrollView style={{ flex: 1, height: '100%' }}>
+        <View style={styles.container}>
             <Image
                 source={isDarkMode
                     ? require('../../assets/images/Darkmode1.jpg')
@@ -104,79 +115,127 @@ const FriendProfile = () => {
                 style={styles.backgroundImage}
                 resizeMode="cover"
             />
-            <View style={{ flex: 1 , position: 'relative', zIndex: 1, height: '100%'}}>
-                <Pressable
-                    onPress={() => router.back()}
-                    style={({ pressed }) => [
-                        styles.backButton,
-                        { opacity: pressed ? 0.3 : 1 }
-                    ]}
-                >
-                    <Ionicons name="chevron-back" size={24} color="black" />
-                </Pressable>
-                <View style={styles.container}>
-                    <View style={styles.imageContainer}>
-                        <Image source={{ uri: user.profileImage }} style={styles.image} />
-                    </View>
-                    <Text style={styles.username}>{user.username}</Text>
-                    <Text style={styles.bio}>{user.bio}</Text>
-                    <View style={styles.infoSectionWrapper}>
+            
+            <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => [
+                    styles.backButton,
+                    { opacity: pressed ? 0.3 : 1 }
+                ]}
+            >
+                <Ionicons name="chevron-back" size={24} color="#fff" />
+            </Pressable>
+
+            <ScrollView
+                style={styles.scrollView}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+            >
+                <View style={styles.headerSection}>
+                    <View style={styles.profileImageContainer}>
                         <Image
-                            source={require('../../assets/images/Weekly.png')}
-                            style={styles.infoBackgroundImage}
+                            source={{
+                                uri: user.profileImage || DEFAULT_IMAGE_URL
+                            }}
+                            style={styles.profileImage}
                         />
-                        <View style={styles.infoSection}>
-                            <View style={styles.infoRow}>
-                                <Text style={styles.label}>Name:</Text>
-                                <Text style={styles.value}>{user.name}</Text>
-                            </View>
-                            <View style={styles.infoRow}>
-                                <Text style={styles.label}>Email:</Text>
-                                <Text style={styles.value}>{user.email}</Text>
-                            </View>
-                            <View style={styles.infoRow}>
-                                <Text style={styles.label}>City:</Text>
-                                <Text style={styles.value}>{user.location?.city}</Text>
-                            </View>
-                            <View style={styles.infoRow}>
-                                <Text style={styles.label}>State:</Text>
-                                <Text style={styles.value}>{user.location?.state}</Text>
-                            </View>
-                            <View style={styles.infoRow}>
-                                <Text style={styles.label}>Last Seen:</Text>
-                                <Text style={styles.value}>{user.lastSeen ? user.lastSeen.split('T')[0] : ''}</Text>
-                            </View>
-                            <View style={styles.infoRow}>
-                                <Text style={styles.label}>Joined:</Text>
-                                <Text style={styles.value}>{user.createdAt ? user.createdAt.split('T')[0] : ''}</Text>
-                            </View>
-                        </View>
                     </View>
-                    <View style={styles.ButtonContainer}>
-                        <Pressable style={styles.removeButton} onPress={handleRemoveFriend}>
-                            <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center', fontFamily: 'InriaSans-Bold', }}>Remove Friend</Text>
-                        </Pressable>
-                        <Pressable style={styles.blockButton} onPress={handleBlock}>
-                            <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center', fontFamily: 'InriaSans-Bold', }}>Block</Text>
-                        </Pressable>
+
+                    <View style={styles.userInfo}>
+                        <Text style={styles.userName}>
+                            {user.username || 'Username'}
+                        </Text>
+                        {user.bio && (
+                            <Text style={styles.userBio}>
+                                {user.bio}
+                            </Text>
+                        )}
                     </View>
                 </View>
-            </View>
 
-        </ScrollView>
+                <View style={styles.infoContainer}>
+                    <View style={styles.infoCard}>
+                        <View style={styles.cardHeader}>
+                            <MaterialIcons name="person" size={20} color="#00DF82" />
+                            <Text style={styles.cardTitle}>Personal Information</Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Full Name</Text>
+                            <Text style={styles.infoValue}>
+                                {user.name || 'Not provided'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Email</Text>
+                            <Text style={styles.infoValue}>
+                                {user.email || 'Not provided'}
+                            </Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Location</Text>
+                            <Text style={styles.infoValue}>
+                                {user.location?.city && user.location?.state
+                                    ? `${user.location.city}, ${user.location.state}`
+                                    : 'Not provided'
+                                }
+                            </Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Last Seen</Text>
+                            <Text style={styles.infoValue}>
+                                {user.lastSeen 
+                                    ? new Date(user.lastSeen).toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    })
+                                    : 'Unknown'
+                                }
+                            </Text>
+                        </View>
+
+                        <View style={styles.infoItem}>
+                            <Text style={styles.infoLabel}>Member Since</Text>
+                            <Text style={styles.infoValue}>
+                                {user.createdAt 
+                                    ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    })
+                                    : 'Unknown'
+                                }
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.actionContainer}>
+                        <View style={styles.secondaryButtonsRow}>
+                            <Pressable style={styles.removeButton} onPress={handleRemoveFriend}>
+                                <MaterialIcons name="person-remove" size={18} color="#fff" />
+                                <Text style={styles.removeButtonText}>Remove Friend</Text>
+                            </Pressable>
+
+                            <Pressable style={styles.blockButton} onPress={handleBlock}>
+                                <MaterialIcons name="block" size={18} color="#fff" />
+                                <Text style={styles.blockButtonText}>Block</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </ScrollView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        height: '100%',
-        width: '100%',
     },
-    
     backgroundImage: {
         position: 'absolute',
         top: 0,
@@ -185,107 +244,170 @@ const styles = StyleSheet.create({
         bottom: 0,
         width: '100%',
         height: '100%',
+        opacity: 1,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 20,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+    },
+    errorText: {
+        fontSize: 16,
+        color: '#666',
+        fontFamily: 'InriaSans-Regular',
     },
     backButton: {
         position: 'absolute',
-        top: 40,
+        top: 50,
         left: 20,
-    },
-    imageContainer: {
-        marginBottom: 16,
+        zIndex: 10,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderRadius: 20,
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 100,
-        padding: 16,
     },
-    image: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
+
+    headerSection: {
+        backgroundColor: '#1C1B33',
+        paddingTop: 80,
+        paddingBottom: 30,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        marginBottom: 20,
     },
-    cameraIcon: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        borderRadius: 12,
-        padding: 2,
-        elevation: 2,
-    },
-    username: {
-        fontSize: 26,
-        color: '#232526',
-        marginTop: 8,
-        marginBottom: 4,
-        letterSpacing: 1,
-        fontFamily: 'InriaSans-Bold',
-    },
-    bio: {
-        fontSize: 15,
-        color: '#607d8b',
-        marginBottom: 18,
-        textAlign: 'center',
-        paddingHorizontal: 24,
-        fontFamily: 'InriaSans-Bold',
-    },
-    infoSectionWrapper: {
-        width: '90%',
-        borderRadius: 16,
-        overflow: 'hidden',
-        marginTop: 8,
+    profileImageContainer: {
         position: 'relative',
+        marginBottom: 16,
     },
-
-    infoBackgroundImage: {
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
+    profileImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 3,
+        borderColor: '#00DF82',
     },
-
-    infoSection: {
-        padding: 18,
+    userInfo: {
+        alignItems: 'center',
     },
-    infoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
-    label: {
-        fontWeight: '600',
-        color: 'indigo',
-        fontSize: 16,
+    userName: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#fff',
+        marginBottom: 4,
         fontFamily: 'InriaSans-Bold',
     },
-    value: {
-        color: 'white',
+    userEmail: {
         fontSize: 16,
+        color: '#00DF82',
+        marginBottom: 8,
         fontFamily: 'InriaSans-Regular',
     },
-    ButtonContainer: {
-        width: '100%',
-        display: 'flex',
+    userBio: {
+        fontSize: 14,
+        color: '#ccc',
+        textAlign: 'center',
+        paddingHorizontal: 20,
+        fontFamily: 'InriaSans-Regular',
+        lineHeight: 20,
+    },
+
+    infoContainer: {
+        paddingHorizontal: 20,
+    },
+    infoCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
         padding: 20,
+        marginBottom: 20
+    },
+    cardHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        flexWrap: 'wrap',
+        alignItems: 'center',
+        marginBottom: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    cardTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333',
+        marginLeft: 8,
+        fontFamily: 'InriaSans-Bold',
+    },
+    infoItem: {
+        marginBottom: 16,
+    },
+    infoLabel: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 4,
+        fontFamily: 'InriaSans-Regular',
+    },
+    infoValue: {
+        fontSize: 16,
+        color: '#333',
+        fontFamily: 'InriaSans-Regular',
+        fontWeight: '500',
+    },
+
+    actionContainer: {
+        marginTop: 10,
+    },
+    secondaryButtonsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
     },
     removeButton: {
         backgroundColor: '#263238',
-        padding: 12,
-        borderRadius: 8,
-        marginTop: 16,
+        flexDirection: 'row',
         alignItems: 'center',
-        elevation: 1,
-        width: '45%',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        flex: 1,
+    },
+    removeButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '500',
+        marginLeft: 6,
         fontFamily: 'InriaSans-Bold',
     },
     blockButton: {
-        backgroundColor: '#FF6347',
-        color: '#fff',
-        padding: 12,
-        width: '45%',
-        borderRadius: 8,
-        marginTop: 16,
+        backgroundColor: '#ff4757',
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        flex: 1
+    },
+    blockButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '500',
+        marginLeft: 6,
         fontFamily: 'InriaSans-Bold',
     },
 });

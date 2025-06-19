@@ -7,7 +7,6 @@ import { CustomKeyboardView } from '../components/CustomKeyboardView';
 import { useAuth } from '../context/authContext';
 
 export default function SignUpScreen() {
-  // Use useState instead of useRef for form inputs
   const [formData, setFormData] = useState({
     username: '',
     phone: '',
@@ -20,7 +19,6 @@ export default function SignUpScreen() {
   const router = useRouter();
   const { register } = useAuth();
 
-  // Input validation functions
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -71,20 +69,19 @@ export default function SignUpScreen() {
       ...prev,
       [field]: value
     }));
-    // Clear error when user starts typing
     if (error) {
       setError('');
     }
   };
 
   async function handleRegister() {
-    // Validate form
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
       Alert.alert('Validation Error', validationError);
       return;
     }
+    router.replace('/signIn');
 
     setLoading(true);
     setError('');

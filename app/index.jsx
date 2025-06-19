@@ -8,7 +8,7 @@ import { useRouter, useSegments } from 'expo-router';
 export default function index() {
   const router = useRouter();
   const segments = useSegments();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userNeedsUsername } = useAuth();
   const [fontsLoaded] = useFonts({
     'InriaSans-Regular': require('@/assets/fonts/InriaSans-Regular.ttf'),
     'InriaSans-Bold': require('@/assets/fonts/InriaSans-Bold.ttf'),
@@ -17,22 +17,17 @@ export default function index() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // Only handle navigation after fonts are loaded
-    if (!fontsLoaded) return;
-
-    const timer = setTimeout(() => {
-      if (isAuthenticated) {
-        // Navigate to tabs and ensure we're on the Chats tab
-        router.replace('/(tabs)/Chats');
+    if (isAuthenticated) {
+      if (userNeedsUsername) {
+        router.replace('/UniqueUsername');
       } else {
-        setShowSplash(false);
+        router.replace('/(tabs)/Chats');
       }
-    }, 100); // Small delay to ensure state is settled
+    } else {
+      setShowSplash(false);
+    }
+  }, [isAuthenticated, userNeedsUsername, fontsLoaded]);
 
-    return () => clearTimeout(timer);
-  }, [isAuthenticated, fontsLoaded]);
-
-  // Show loading while fonts are loading or during authentication check
   if (!fontsLoaded || (isAuthenticated && showSplash)) {
     return (
       <View style={styles.loadingContainer}>
@@ -41,7 +36,6 @@ export default function index() {
     );
   }
 
-  // If user is authenticated, don't show this screen
   if (isAuthenticated) {
     return null;
   }

@@ -5,6 +5,7 @@ import { db, auth } from '../../firebaseConfig';
 import { useRouter } from 'expo-router';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { Header } from '../../components/Header';
+import { ScrollView } from 'react-native';
 
 const Explore = () => {
     const [search, setSearch] = useState('');
@@ -76,7 +77,8 @@ const Explore = () => {
                         onChangeText={setSearch}
                         placeholderTextColor="#aaa"
                     />
-                    <FlatList
+                    {
+                        search.length>0 &&<FlatList
                         data={filteredUsers}
                         keyExtractor={item => item.uid}
                         renderItem={({ item }) => (
@@ -91,6 +93,8 @@ const Explore = () => {
                             </Text>
                         }
                     />
+                    }
+                    
                 </View>
 
             </View>
@@ -101,8 +105,7 @@ const Explore = () => {
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        position: 'relative',
+        flex: 1
     },
     backgroundImage: {
         position: 'absolute',
@@ -131,7 +134,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         borderWidth: 1,
         borderColor: 'indigo',
-        color: 'black',
+        color: 'white',
         fontFamily: 'InriaSans-Regular',
         backgroundColor: '#1C1B33'
     },

@@ -1,29 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, Image, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { Entypo, MaterialIcons, Feather } from '@expo/vector-icons';
-import { useAuth } from '../../context/authContext';
-import { auth } from '../../firebaseConfig';
+import { useActionSheet } from '@expo/react-native-action-sheet';
+import { Entypo, Feather, MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Modal from 'react-native-modal';
 import { EditDataModal } from '../../components/EditDataModal';
-import { useActionSheet } from '@expo/react-native-action-sheet';
-import * as ImagePicker from 'expo-image-picker';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
+import { useAuth } from '../../context/authContext';
+import { auth } from '../../firebaseConfig';
 
 const Profile = () => {
     const { logout, fetchUserProfile, updateUserProfile, deleteUserProfile, updateProfileImage } = useAuth();
-    const [isModalVisible, setModalVisible] = useState(false);
     const router = useRouter();
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [editDetails, setEditDetails] = useState({
-        username: '',
-        phone: '',
-        bio: '',
-        city: '',
-        state: ''
-    });
     const { showActionSheetWithOptions } = useActionSheet();
 
     const fetchUser = async () => {
@@ -50,36 +40,7 @@ const Profile = () => {
     }, []);
 
     const handleModal = () => {
-        if (user) {
-            setEditDetails({
-                username: user.username || '',
-                phone: user.phone || '',
-                bio: user.bio || '',
-                city: user.location?.city || '',
-                state: user.location?.state || ''
-            });
-        }
-        setModalVisible(!isModalVisible);
-    };
-
-    const handleSave = async () => {
-        const updateData = {
-            username: editDetails.username,
-            phone: editDetails.phone,
-            bio: editDetails.bio,
-            'location.city': editDetails.city,
-            'location.state': editDetails.state
-        };
-
-        const result = await updateUserProfile(updateData);
-
-        if (result.success) {
-            setModalVisible(false);
-            fetchUser();
-            Alert.alert('Success', result.message);
-        } else {
-            Alert.alert('Error', result.message);
-        }
+       router.push('/UniqueUsername');
     };
 
 
@@ -290,8 +251,6 @@ const Profile = () => {
                 style={styles.backgroundImage}
                 resizeMode="cover"
             />
-
-
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
@@ -390,19 +349,6 @@ const Profile = () => {
                     </View>
                 </View>
             </ScrollView>
-
-            <Modal
-                isVisible={isModalVisible}
-                onBackdropPress={handleModal}
-                style={styles.modal}
-            >
-                <EditDataModal
-                    editDetails={editDetails}
-                    setEditDetails={setEditDetails}
-                    onClose={handleModal}
-                    onSave={handleSave}
-                />
-            </Modal>
         </View>
     );
 };
@@ -621,9 +567,5 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginLeft: 6,
         fontFamily: 'InriaSans-Bold',
-    },
-    modal: {
-        margin: 0,
-        justifyContent: 'flex-end',
-    },
+    }
 });

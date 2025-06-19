@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendEmailVerification, onAuthStateChanged } from "firebase/auth";
 import { addDoc, collection, doc, getDoc, getDocs, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch, deleteDoc } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "../firebaseConfig";
@@ -7,6 +7,7 @@ export const AuthContext = createContext();
 export const AuthContextProvider = ({ children }) => {
 
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [userNeedsUsername, setUserNeedsUsername] = useState(false);
 
     const login = async (email, password) => {
         try {
@@ -156,13 +157,164 @@ export const AuthContextProvider = ({ children }) => {
             router.replace('/');
         });
     };
+    const hasUsername = async () => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return false;
+        const uid = currentUser.uid;
+        const userRef = doc(db, "users", uid);
+        const userData = await getDoc(userRef);
+        if (!userData.exists()) return false;
+        const data = userData.data();
+        return !!(data.username && data.username.trim());
+    };
+    // Check details if preent or not
+    const checkDetails = async () => {
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                return { success: false, message: "User not authenticated" };
+            }
+            const uid = currentUser.uid;
+            const userRef = doc(db, "users", uid);
+            const userData = await getDoc(userRef);
+            if (!userData.exists()) {
+                return { success: false, message: `User data not found` };
+            }
+            const data = userData.data();
+            if (!data.username || data.username.trim() === "") {
+                return { success: false, message: `Please Enter Your Details` };
+            }
+            return { success: true, message: `Welcome ${data.username}` };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    };
+    // Deatils Check Unique Username
+    const checkUniqueUsername = async (username, bio, city, state) => {
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                return { success: false, message: "User not authenticated" };
+            }
+            const uid = currentUser.uid;
+            const userRef = doc(db, "users", uid);
+            const usersRef = collection(db, 'users');
+
+            const q = query(usersRef, where('username', '==', username));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                await updateDoc(userRef, {
+                    username: username,
+                    bio: bio,
+                    location: {
+                        city: city,
+                        state: state
+                    }
+                });
+                return { success: true, message: `Username ${username} is available. Hello ${username}!` };
+            } else {
+                return { success: false, message: "Username already exists. Please choose another one." };
+            }
+        } catch (error) {
+            console.error('Error checking username:', error);
+            return { success: false, message: error.message || "An error occurred while checking username" };
+        }
+    }
+
+
+    // Real time updates
+    const fetchUserProfile = async (userId = null) => {
+        try {
+            const currentUser = auth.currentUser;
+            const uid = userId || currentUser?.uid;
+
+            if (!uid) {
+                return { success: false, message: "No user found" };
+            }
+
+            const docRef = doc(db, 'users', uid);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                return { success: true, data: docSnap.data() };
+            } else {
+                return { success: false, message: "User profile not found" };
+            }
+        } catch (error) {
+            console.error("Error fetching user profile:", error);
+            return { success: false, message: error.message || "Failed to load profile" };
+        }
+    };
+
+    const updateUserProfile = async (updateData) => {
+        try {
+            const uid = auth.currentUser?.uid;
+            if (!uid) {
+                return { success: false, message: "No authenticated user found" };
+            }
+
+            const userRef = doc(db, 'users', uid);
+            await updateDoc(userRef, updateData);
+
+            return { success: true, message: "Profile updated successfully" };
+        } catch (error) {
+            console.error("Error updating user profile:", error);
+            return { success: false, message: error.message || "Failed to update profile" };
+        }
+    };
+
+    // Delete user profile and account
+    const deleteUserProfile = async () => {
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                return { success: false, message: "No authenticated user found" };
+            }
+
+            const uid = currentUser.uid;
+
+            await deleteDoc(doc(db, 'users', uid));
+
+            await currentUser.delete();
+
+            setIsAuthenticated(false);
+
+            return { success: true, message: "Profile deleted successfully" };
+        } catch (error) {
+            console.error("Error deleting user profile:", error);
+            return { success: false, message: error.message || "Failed to delete profile" };
+        }
+    };
+
+    // Update profile image
+    const updateProfileImage = async (imageData, isURL = false) => {
+        try {
+            const currentUser = auth.currentUser;
+            const uid = currentUser?.uid;
+            const userRef = doc(db, 'users', uid);
+
+            const imageUri = isURL ? imageData : `data:image/jpeg;base64,${imageData}`;
+
+            await updateDoc(userRef, {
+                profileImage: imageUri
+            });
+
+            return { success: true, message: "Profile image updated successfully", imageUrl: imageUri };
+        } catch (error) {
+            console.error("Error updating profile image:", error);
+            return { success: false, message: error.message || "Failed to update profile image" };
+        }
+    };
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(user => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            setIsAuthenticated(!!user);
             if (user) {
-                setIsAuthenticated(true);
+                const needsUsername = !(await hasUsername());
+                setUserNeedsUsername(needsUsername);
             } else {
-                setIsAuthenticated(false);
+                setUserNeedsUsername(false);
             }
         });
         return () => unsubscribe();
@@ -400,6 +552,7 @@ export const AuthContextProvider = ({ children }) => {
                     chatId,
                     profileImage: friend?.profileImage,
                     name: friend?.name || friend?.username,
+                    username: friend?.username,
                     lastMessage,
                     time: lastMessageTime,
                     isOnline: friend?.isOnline || false,
@@ -421,89 +574,7 @@ export const AuthContextProvider = ({ children }) => {
 
         return unsubscribe;
     };
-    // Real time updates
-    const fetchUserProfile = async (userId = null) => {
-        try {
-            const currentUser = auth.currentUser;
-            const uid = userId || currentUser?.uid;
 
-            if (!uid) {
-                return { success: false, message: "No user found" };
-            }
-
-            const docRef = doc(db, 'users', uid);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                return { success: true, data: docSnap.data() };
-            } else {
-                return { success: false, message: "User profile not found" };
-            }
-        } catch (error) {
-            console.error("Error fetching user profile:", error);
-            return { success: false, message: error.message || "Failed to load profile" };
-        }
-    };
-
-    const updateUserProfile = async (updateData) => {
-        try {
-            const uid = auth.currentUser?.uid;
-            if (!uid) {
-                return { success: false, message: "No authenticated user found" };
-            }
-
-            const userRef = doc(db, 'users', uid);
-            await updateDoc(userRef, updateData);
-
-            return { success: true, message: "Profile updated successfully" };
-        } catch (error) {
-            console.error("Error updating user profile:", error);
-            return { success: false, message: error.message || "Failed to update profile" };
-        }
-    };
-
-    // Delete user profile and account
-    const deleteUserProfile = async () => {
-        try {
-            const currentUser = auth.currentUser;
-            if (!currentUser) {
-                return { success: false, message: "No authenticated user found" };
-            }
-
-            const uid = currentUser.uid;
-
-            await deleteDoc(doc(db, 'users', uid));
-
-            await currentUser.delete();
-
-            setIsAuthenticated(false);
-
-            return { success: true, message: "Profile deleted successfully" };
-        } catch (error) {
-            console.error("Error deleting user profile:", error);
-            return { success: false, message: error.message || "Failed to delete profile" };
-        }
-    };
-
-    // Update profile image
-    const updateProfileImage = async (imageData, isURL = false) => {
-        try {
-            const currentUser = auth.currentUser;
-            const uid = currentUser?.uid;
-            const userRef = doc(db, 'users', uid);
-
-            const imageUri = isURL ? imageData : `data:image/jpeg;base64,${imageData}`;
-
-            await updateDoc(userRef, {
-                profileImage: imageUri
-            });
-
-            return { success: true, message: "Profile image updated successfully", imageUrl: imageUri };
-        } catch (error) {
-            console.error("Error updating profile image:", error);
-            return { success: false, message: error.message || "Failed to update profile image" };
-        }
-    };
 
     return (
         <AuthContext.Provider value={{
@@ -512,6 +583,10 @@ export const AuthContextProvider = ({ children }) => {
             resendVerificationEmail,
             logout,
             isAuthenticated,
+            userNeedsUsername,
+            hasUsername,
+            checkDetails,
+            checkUniqueUsername,
             setIsAuthenticated,
             startChat,
             sendMessage,

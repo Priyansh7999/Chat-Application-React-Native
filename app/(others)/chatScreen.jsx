@@ -21,7 +21,7 @@ const ChatScreen = () => {
     const { showActionSheetWithOptions } = useActionSheet();
 
 
-    // USERS AND FRIEND DATA FETCHING 
+    // USERS aur FRIEND data fetch karna 
     useEffect(() => {
         if (!friendId || !auth.currentUser?.uid) return;
         const unsubFriend = onSnapshot(doc(db, 'users', friendId), snap => {
@@ -37,7 +37,7 @@ const ChatScreen = () => {
     }, [friendId]);
 
 
-    // FINDING EXISTING CHAT ID
+    // chat id se data find karna
     useEffect(() => {
         const findExistingChat = async () => {
             if (currentChatId || !user?.uid || !friend?.uid) return;
@@ -112,7 +112,7 @@ const ChatScreen = () => {
     };
 
     return (
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
             <ChatHeader friend={friend || {}} />
             <SafeAreaView style={styles.container}>
                 <ImageBackground
