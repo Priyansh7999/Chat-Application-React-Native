@@ -167,7 +167,7 @@ export const AuthContextProvider = ({ children }) => {
         const data = userData.data();
         return !!(data.username && data.username.trim());
     };
-    // Check details if preent or not
+    // Check details if there or not
     const checkDetails = async () => {
         try {
             const currentUser = auth.currentUser;
@@ -193,9 +193,6 @@ export const AuthContextProvider = ({ children }) => {
     const checkUniqueUsername = async (username, bio, city, state) => {
         try {
             const currentUser = auth.currentUser;
-            if (!currentUser) {
-                return { success: false, message: "User not authenticated" };
-            }
             const uid = currentUser.uid;
             const userRef = doc(db, "users", uid);
             const usersRef = collection(db, 'users');
@@ -203,7 +200,7 @@ export const AuthContextProvider = ({ children }) => {
             const q = query(usersRef, where('username', '==', username));
             const querySnapshot = await getDocs(q);
 
-            if (querySnapshot.empty) {
+            if (querySnapshot.empty || querySnapshot.docs[0].id === uid) {
                 await updateDoc(userRef, {
                     username: username,
                     bio: bio,
@@ -212,7 +209,7 @@ export const AuthContextProvider = ({ children }) => {
                         state: state
                     }
                 });
-                return { success: true, message: `Username ${username} is available. Hello ${username}!` };
+                return { success: true, message: `Details Updated. Congratulations ${username}!` };
             } else {
                 return { success: false, message: "Username already exists. Please choose another one." };
             }
@@ -574,7 +571,76 @@ export const AuthContextProvider = ({ children }) => {
 
         return unsubscribe;
     };
+    const addupdateStory = async (imageData) => {
+        try {
+            const currentUser = auth.currentUser;
+            const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+            const userData = userDoc.data();
+            const newStory = {
+                userId: currentUser.uid,
+                username: userData.username || userData.name || 'User',
+                image: imageData,
+                createdAt: serverTimestamp(),
+                profileImage: userData.profileImage
+            };
+            await addDoc(collection(db, 'stories'), newStory);
+            return { success: true, message: "Story posted!" };
+        } catch (error) {
+            console.error('Error:', error);
+            return { success: false, message: "Something went wrong" };
+        }
+    };
 
+    const removeStory = async () => {
+        try {
+            const currentUser = auth.currentUser;
+            const userStories = await getDocs(
+                query(collection(db, 'stories'), where('userId', '==', currentUser.uid))
+            );
+            userStories.forEach(async (storyDoc) => {
+                await deleteDoc(doc(db, 'stories', storyDoc.id));
+            });
+            return { success: true, message: "Story removed!" };
+        } catch (error) {
+            console.error('Error:', error);
+            return { success: false, message: "Something went wrong" };
+        }
+    };
+
+    const getStories = async () => {
+        try {
+            const currentUser = auth.currentUser;
+            const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+            const userData = userDoc.data();
+            const friends = userData.friends || [];
+            const allUserIds = [currentUser.uid, ...friends];
+            const storiesSnapshot = await getDocs(
+                query(collection(db, 'stories'), where('userId', 'in', allUserIds))
+            );
+            const stories = [];
+            storiesSnapshot.forEach((doc) => {
+                const storyData = doc.data();
+                stories.push({
+                    id: doc.id,
+                    userId: storyData.userId,
+                    username: storyData.username,
+                    image: storyData.image,
+                    createdAt: storyData.createdAt,
+                    isCurrentUser: storyData.userId === currentUser.uid,
+                    profileImage: storyData.profileImage
+                });
+            });
+            stories.sort((a, b) => {
+                const timeA = a.createdAt?.toDate() || new Date(0);
+                const timeB = b.createdAt?.toDate() || new Date(0);
+                return timeB - timeA;
+            });
+            return { success: true, data: stories };
+        } catch (error) {
+            console.error('Error:', error);
+            return { success: false, message: "Failed to load stories" };
+        }
+    };
 
     return (
         <AuthContext.Provider value={{
@@ -598,7 +664,10 @@ export const AuthContextProvider = ({ children }) => {
             updateUserProfile,
             deleteUserProfile,
             updateProfileImage,
-            markMessagesAsRead
+            markMessagesAsRead,
+            addupdateStory,
+            removeStory,
+            getStories,
         }}>
             {children}
         </AuthContext.Provider>
