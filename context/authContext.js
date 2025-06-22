@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendEmailVerification, onAuthStateChanged } from "firebase/auth";
-import { addDoc, collection, doc, getDoc, getDocs, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch, deleteDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch, deleteDoc, arrayUnion } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "../firebaseConfig";
 export const AuthContext = createContext();
@@ -571,25 +571,32 @@ export const AuthContextProvider = ({ children }) => {
 
         return unsubscribe;
     };
-    const addupdateStory = async (imageData) => {
-        try {
-            const currentUser = auth.currentUser;
-            const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-            const userData = userDoc.data();
-            const newStory = {
-                userId: currentUser.uid,
-                username: userData.username || userData.name || 'User',
-                image: imageData,
-                createdAt: serverTimestamp(),
-                profileImage: userData.profileImage
-            };
-            await addDoc(collection(db, 'stories'), newStory);
-            return { success: true, message: "Story posted!" };
-        } catch (error) {
-            console.error('Error:', error);
-            return { success: false, message: "Something went wrong" };
-        }
-    };
+const addupdateStory = async (imageData) => {
+    try {
+        const currentUser = auth.currentUser;
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const userData = userDoc.data();
+        // Remove old stories for this user
+        const oldStories = await getDocs(query(collection(db, 'stories'), where('userId', '==', currentUser.uid)));
+        oldStories.forEach(async (storyDoc) => {
+            await deleteDoc(doc(db, 'stories', storyDoc.id));
+        });
+        // Add new story
+        const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+        await addDoc(collection(db, 'stories'), {
+            userId: currentUser.uid,
+            username: userData.username || userData.name || 'User',
+            image: imageData,
+            createdAt: serverTimestamp(),
+            profileImage: userData.profileImage,
+            expireAt // Firestore Timestamp, can use for scheduled delete
+        });
+        return { success: true, message: "Story posted!" };
+    } catch (error) {
+        console.error('Error:', error);
+        return { success: false, message: "Something went wrong" };
+    }
+};
 
     const removeStory = async () => {
         try {
@@ -641,6 +648,20 @@ export const AuthContextProvider = ({ children }) => {
             return { success: false, message: "Failed to load stories" };
         }
     };
+     const likeStory = async (storyId) => {
+    try {
+        const currentUser = auth.currentUser;
+        const storyRef = doc(db, 'stories', storyId);
+        await updateDoc(storyRef, {
+            likes: arrayUnion(currentUser.uid)
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Error liking story:', error);
+        return { success: false, message: "Failed to like story" };
+    }
+};
+
 
     return (
         <AuthContext.Provider value={{
@@ -668,6 +689,7 @@ export const AuthContextProvider = ({ children }) => {
             addupdateStory,
             removeStory,
             getStories,
+            likeStory
         }}>
             {children}
         </AuthContext.Provider>

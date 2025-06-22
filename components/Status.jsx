@@ -10,7 +10,6 @@ const Status = () => {
     const [stories, setStories] = useState([]);
     const [myStory, setMyStory] = useState(null);
     const [loading, setLoading] = useState(true);
-
     const fetchStories = useCallback(async () => {
         try {
             setLoading(true);
@@ -121,7 +120,6 @@ const Status = () => {
         setStatusVisible(false);
         setSelectedStory(null);
     };
-
     const defaultImage = "https://www.citypng.com/public/uploads/preview/instagram-share-story-stories-circle-button-icon-701751695136551d78liw1wvw.png";
     const otherStories = stories.filter(story => !story.isCurrentUser);
     return (
@@ -173,6 +171,7 @@ const Status = () => {
 };
 
 const styles = StyleSheet.create({
+    
     title: {
         padding: 15,
         fontSize: 24,
