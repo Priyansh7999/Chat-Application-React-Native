@@ -68,7 +68,6 @@ const Explore = () => {
                     source={require('../../assets/images/Lightmodechat.jpg')}
                     style={styles.backgroundImage}
                 />
-                <Status />
                 <View style={styles.Container}>
                     <Text style={styles.title}>Explore People </Text>
                     <TextInput

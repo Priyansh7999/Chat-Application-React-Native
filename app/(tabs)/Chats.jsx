@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { auth } from '../../firebaseConfig';
 import { useAuth } from '../../context/authContext';
 import { Header } from '../../components/Header';
+import Status from '../../components/Status';
 
 const Chats = () => {
   const [search, setSearch] = useState('');
@@ -45,7 +46,7 @@ const Chats = () => {
   }, [friends, listenToChatPreviews]);
 
   const filteredChats = chatPreviews.filter(chat =>
-    chat.name?.toLowerCase().includes(search.trim().toLowerCase())
+    chat.username?.toLowerCase().includes(search.trim().toLowerCase())
   );
   const handleChatPress = async (chat) => {
     if (chat.chatId && chat.isUnread) {
@@ -73,6 +74,7 @@ const Chats = () => {
           style={styles.backgroundImage}
           resizeMode="cover"
         />
+
         <View style={styles.searchBarContainer}>
           <TextInput
             style={styles.searchBar}
@@ -82,11 +84,13 @@ const Chats = () => {
             placeholderTextColor="#aaa"
           />
         </View>
+        <Status />
         <ScrollView
           style={styles.chatContainer}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.chatContentContainer}
         >
+          <Text style={styles.title}>Messages</Text>
           {loading ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ fontSize: 18, color: 'indigo', fontFamily: 'InriaSans-Bold' }}>Loading...</Text>
@@ -175,6 +179,12 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
+  },
+  title: {
+    paddingHorizontal: 10,
+    fontSize: 24,
+    color: 'indigo',
+    fontFamily: 'InriaSans-Bold',
   },
   chatContentContainer: {
     paddingTop: 20,

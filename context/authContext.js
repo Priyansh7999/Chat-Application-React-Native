@@ -8,6 +8,7 @@ export const AuthContextProvider = ({ children }) => {
 
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [userNeedsUsername, setUserNeedsUsername] = useState(false);
+    
 
     const login = async (email, password) => {
         try {
@@ -571,32 +572,30 @@ export const AuthContextProvider = ({ children }) => {
 
         return unsubscribe;
     };
-const addupdateStory = async (imageData) => {
-    try {
-        const currentUser = auth.currentUser;
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        const userData = userDoc.data();
-        // Remove old stories for this user
-        const oldStories = await getDocs(query(collection(db, 'stories'), where('userId', '==', currentUser.uid)));
-        oldStories.forEach(async (storyDoc) => {
-            await deleteDoc(doc(db, 'stories', storyDoc.id));
-        });
-        // Add new story
-        const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-        await addDoc(collection(db, 'stories'), {
-            userId: currentUser.uid,
-            username: userData.username || userData.name || 'User',
-            image: imageData,
-            createdAt: serverTimestamp(),
-            profileImage: userData.profileImage,
-            expireAt // Firestore Timestamp, can use for scheduled delete
-        });
-        return { success: true, message: "Story posted!" };
-    } catch (error) {
-        console.error('Error:', error);
-        return { success: false, message: "Something went wrong" };
-    }
-};
+    const addupdateStory = async (imageData) => {
+        try {
+            const currentUser = auth.currentUser;
+            const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+            const userData = userDoc.data();
+            const oldStories = await getDocs(query(collection(db, 'stories'), where('userId', '==', currentUser.uid)));
+            oldStories.forEach(async (storyDoc) => {
+                await deleteDoc(doc(db, 'stories', storyDoc.id));
+            });
+            const expireAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            await addDoc(collection(db, 'stories'), {
+                userId: currentUser.uid,
+                username: userData.username || userData.name || 'User',
+                image: imageData,
+                createdAt: serverTimestamp(),
+                profileImage: userData.profileImage,
+                expireAt 
+            });
+            return { success: true, message: "Story posted!" };
+        } catch (error) {
+            console.error('Error:', error);
+            return { success: false, message: "Something went wrong" };
+        }
+    };
 
     const removeStory = async () => {
         try {
@@ -648,19 +647,19 @@ const addupdateStory = async (imageData) => {
             return { success: false, message: "Failed to load stories" };
         }
     };
-     const likeStory = async (storyId) => {
-    try {
-        const currentUser = auth.currentUser;
-        const storyRef = doc(db, 'stories', storyId);
-        await updateDoc(storyRef, {
-            likes: arrayUnion(currentUser.uid)
-        });
-        return { success: true };
-    } catch (error) {
-        console.error('Error liking story:', error);
-        return { success: false, message: "Failed to like story" };
-    }
-};
+    const likeStory = async (storyId) => {
+        try {
+            const currentUser = auth.currentUser;
+            const storyRef = doc(db, 'stories', storyId);
+            await updateDoc(storyRef, {
+                likes: arrayUnion(currentUser.uid)
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('Error liking story:', error);
+            return { success: false, message: "Failed to like story" };
+        }
+    };
 
 
     return (

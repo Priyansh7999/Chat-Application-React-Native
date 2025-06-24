@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Image, Pressable, Animated, Dimensions } from 'react-native';
 import PagerView from 'react-native-pager-view';
-
 const PAGE_DURATION = 5000; 
-
 export const StoryView = ({ story, onClose }) => {
   const storyItems = [{ image: story.image, id: story.id }];
   const [currentPage, setCurrentPage] = useState(0);
@@ -68,7 +66,7 @@ export const StoryView = ({ story, onClose }) => {
             <Image
               source={{ uri: item.image }}
               style={styles.image}
-              resizeMode='cover'
+              // resizeMode='contain'
             />
           </View>
         ))}
@@ -103,25 +101,5 @@ const styles = StyleSheet.create({
   },
   pager: { flex: 1 },
   page: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  image: { width: '90%', height: '80%', borderRadius: 15 },
-  bottomContainer: {
-    position: 'absolute',
-    bottom: 40,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  likeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#222',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 30,
-  },
-  likeText: {
-    fontSize: 22,
-    color: 'white',
-    marginRight: 5,
-  },
+  image: { width: '90%', height: '80%', borderRadius: 15, resizeMode:'contain' },
 });

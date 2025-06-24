@@ -30,6 +30,22 @@ const Status = () => {
     useEffect(() => {
         fetchStories();
     }, [fetchStories]);
+
+
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date();
+            const myStory = stories.find(story => story.isCurrentUser);
+            if (myStory && myStory.expireAt && now > myStory.expireAt) {
+                deleteMyStory();
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [stories]);
+
+
+
     const takePhoto = async () => {
         try {
             const result = await ImagePicker.launchCameraAsync({
@@ -84,7 +100,7 @@ const Status = () => {
     };
     const showStoryOptions = () => {
         const options = myStory
-            ? ['Take Photo', 'Choose from Gallery', 'Delete Story', 'Cancel']
+            ? ['View Story', 'Delete Story', 'Cancel']
             : ['Take Photo', 'Choose from Gallery', 'Cancel'];
 
         const cancelIndex = options.length - 1;
@@ -98,11 +114,9 @@ const Status = () => {
             },
             (buttonIndex) => {
                 if (buttonIndex === 0) {
-                    takePhoto();
+                    myStory ? handleStory(myStory) : takePhoto();
                 } else if (buttonIndex === 1) {
-                    pickFromGallery();
-                } else if (buttonIndex === 2 && myStory) {
-                    deleteMyStory();
+                    myStory ? deleteMyStory() :  pickFromGallery();
                 }
             }
         );
@@ -171,9 +185,8 @@ const Status = () => {
 };
 
 const styles = StyleSheet.create({
-    
     title: {
-        padding: 15,
+        padding: 10,
         fontSize: 24,
         color: 'indigo',
         fontFamily: 'InriaSans-Bold',
