@@ -349,6 +349,7 @@ const Profile = () => {
                     </View>
                 </View>
             </ScrollView>
+            
         </View>
     );
 };
