@@ -44,7 +44,6 @@ A modern, real-time chat application built with React Native and Firebase, featu
 
 ## 📱 Screenshots
 
-*[Add screenshots of your app here]*
 
 ## 🔧 Installation & Setup
 
@@ -201,22 +200,23 @@ service cloud.firestore {
 ```
 chatter/
 ├── app/
-│   ├── (tabs)/
-│   │   ├── Chats.jsx          # Chat previews screen
-│   │   ├── explore.jsx        # User search & discovery
-│   │   └── profile.jsx        # User profile management
-│   ├── friendprofile.jsx      # Friend's profile view
-│   ├── notfriendprofile.jsx   # Non-friend user profile
-│   ├── ChatsBetweenFriends.jsx # One-to-one chat screen
-│   ├── _layout.jsx            # App layout configuration
-│   ├── layout.jsx             # Main app layout
-│   ├── index.jsx              # Onboarding screen
-│   ├── signup.jsx             # User registration
-│   └── signin.jsx             # User login
+│   ├── (tabs)/                       # HOME SCREENS TAB NAVIGATION
+│   │   ├── Chats.jsx                 # Chat previews screen
+│   │   ├── explore.jsx               # User search & discovery
+│   │   └── profile.jsx               # User profile management
+│   ├── (others)/                     # SCREENS for chat between users and profile of other users
+│   │   ├── friendprofile.jsx         # Friend's profile view
+│   │   ├── notfriendprofile.jsx      # Non-friend user profile
+│   │   └── ChatsBetweenFriends.jsx   # One-to-one chat screen
+│   ├── _layout.jsx                   # App layout configuration
+│   ├── layout.jsx                    # Main app layout
+│   ├── index.jsx                     # Onboarding screen
+│   ├── signup.jsx                    # User registration
+│   └── signin.jsx                    # User login
 ├── components/
 │   └── [Reusable UI Components]
 ├── context/ 
-│   └── AuthContext.jsx        # Authentication & Firebase logic
+│   └── AuthContext.jsx               # Authentication & Firebase logic
 ├── assets/
 ├── firebaseConfig.js
 ├── app.json
