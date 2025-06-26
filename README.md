@@ -328,7 +328,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👥 Authors
 
-- **Priyansh Saxena** - *Initial work* - [YourGitHub](https://github.com/Priyansh7999)
+- **Priyansh Saxena** - *Initial work* - [Priyansh7999](https://github.com/Priyansh7999)
 
 ## 🙏 Acknowledgments
 
